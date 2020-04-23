@@ -1,0 +1,117 @@
+//automatización rig pelota Fey Unda
+
+
+//crear una esfera de 1 de radio
+polySphere -r 1;
+//crear un circulo de  2 de radio
+circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 2 -d 3 -ut 0 -tol 0.01 -s 8 -ch 1; objectMoveCommand;
+//emparentar la esfera al circulo
+    //selecionas al hijo
+    //select -r polySphere1;
+    //seleccionas al padre
+    //select -tgl nurbsCircle1; 
+    //parent
+    parent pSphere1 nurbsCircle1;
+//bloquear atributos y ocultarlos de la esfera
+setAttr -lock true -keyable false -channelBox false "pSphere1.tx";
+setAttr -lock true -keyable false -channelBox false "pSphere1.ty";
+setAttr -lock true -keyable false -channelBox false "pSphere1.tz";
+setAttr -lock true -keyable false -channelBox false "pSphere1.rx";
+setAttr -lock true -keyable false -channelBox false "pSphere1.ry";
+setAttr -lock true -keyable false -channelBox false "pSphere1.rz";
+setAttr -lock true -keyable false -channelBox false "pSphere1.sx";
+setAttr -lock true -keyable false -channelBox false "pSphere1.sy";
+setAttr -lock true -keyable false -channelBox false "pSphere1.sz";
+setAttr -lock true -keyable false -channelBox false "pSphere1.v";
+//Agregar deformación no linear de tipo Squash y stretch
+nonLinear -type squash;
+//emparentar el handle de squash al circulo
+    //select hijo
+    //select -r squash1Handle ;
+    //shift select padre
+    //select -r nurbsCircle1;
+    //parent
+    parent squash1Handle nurbsCircle1 ;
+//cambiar nombre de controlador
+rename "nurbsCircle1" "Controlador";
+//agregar atributo al controlador de squash stretch
+//-10 a 10 float se llamaba SquashStretch
+addAttr -ln "SquashStretch"  -at double  -min -10 -max 10 -dv 0 |Controlador;
+setAttr -e-keyable true |Controlador.SquashStretch;
+//set driven key entre el atributo y el factor de squashstretch
+    //se hace cuando ambos son 0
+setDrivenKeyframe -currentDriver Controlador.SquashStretch squash1.factor;
+    //se hace el setDRivenKeyframe cuando está en squash
+        //se cambia el -10 el squash stretch del controlador
+        setAttr "Controlador.SquashStretch" -10;
+        //se cambia el el factor por -.6
+        setAttr "squash1.factor" -0.6;
+        //se hace el set
+setDrivenKeyframe -currentDriver Controlador.SquashStretch squash1.factor;
+    //se hace el setDrivenKeyFrame cuando está en stretch
+        //se cambia a 10 el squash stretech del controlador
+         setAttr "Controlador.SquashStretch" 10;
+        //se cambia el factor por 0.6
+        setAttr "squash1.factor" -0.6;
+        //se hace el set
+setDrivenKeyframe -currentDriver Controlador.SquashStretch squash1.factor;
+//ocultamos el handle del squash stretch  visibilidad 0
+setAttr "squash1Handle.visibility" 0;
+//se crea el atributo en la esfera de blue float 0 a 1 
+addAttr -ln "Blue" -at double -min 0 -max 1 -dv 0 |Controlador;
+setAttr -e-keyable true |Controlador.Blue;
+//se crea el atributo en la esfera de red float 0 a 1
+addAttr -ln "Red" -at double -min 0 -max 1 -dv 0 |Controlador;
+setAttr -e-keyable true |Controlador.Red;
+//se crea el atributo en la esfera de green float 0 a 1 
+addAttr -ln "Green" -at double -min 0 -max 1 -dv 0 |Controlador;
+setAttr -e-keyable true |Controlador.Green;
+//se crea el atributo en la esfera desolido o degradado enum solido|degradado
+addAttr -ln "Modo" -at "enum" -en "Solido:Degradado:"  |Controlador;
+setAttr -e-keyable true |Controlador.Modo;
+
+
+
+//se crea capa en donde poner la esfera como referencia t se coloca el nombre y se Pone No TOCAR
+    //selecciona la esfera
+    select -r pSphere1;
+    //se crea la capa
+    createDisplayLayer -name "layer1" -number 1 -empty;
+    editDisplayLayerMembers -noRecurse layer1 `ls -selection`;
+    //color rojo y que diga No Tocar
+    setAttr layer1.displayType 2; setAttr layer1.color 4; setAttr layer1.overrideColorRGB 0 0 0; setAttr layer1.overrideRGBColors 0; ; rename layer1 NOTOCAR;
+
+
+//Crear Material Blinn
+
+//selecciona la esfera
+select -r pSphere1;
+shadingNode -asShader blinn;
+//asigna el nuevo material
+sets -renderable true -noSurfaceShader true -empty -name blinn1SG;
+connectAttr -f blinn1.outColor blinn1SG.surfaceShader; 
+assignCreatedShader "blinn" "" blinn1 "pSphere1";
+sets -e -forceElement blinn1SG;
+//renombrar el material a la esfera
+rename blinn1 "MaterialPelota" ;
+
+
+// ESTO ME FALLA MUCHISIMO
+
+
+//Al color de MaterialPelota se le asigna un colorCondition
+defaultNavigation -createNew -destination "MaterialPelota.color";
+createRenderNode -allWithTexturesUp "defaultNavigation -force true -connectToExisting -source %node -destination MaterialPelota.color" "";
+defaultNavigation -defaultTraversal -destination "MaterialPelota.color";
+shadingNode -asUtility colorCondition;
+// Condición
+defaultNavigation -force true -connectToExisting -source colorCondition1 -destination MaterialPelota.color; window -e -vis false createRenderNodeWindow;
+connectAttr -force colorCondition1.outColor MaterialPelota.color;
+
+
+
+
+
+//al ColorA de colorCondition le asignamos un LayeredTexture
+
+
